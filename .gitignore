@@ -5,6 +5,20 @@
 /managed_components/
 /sdkconfig
 /sdkconfig.old
+compile_commands.json
+*.log
 
 # macOS
 .DS_Store
+
+# Editors and local environments
+.vscode/
+.idea/
+.clangd/
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
