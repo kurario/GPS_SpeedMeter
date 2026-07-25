@@ -10,6 +10,9 @@ FreeRTOSで実装しています。起動時は黒基調の専用画面に
 
 正本となる要求は [docs/requirements.md](docs/requirements.md) を参照してください。
 
+本プロジェクトはM5Stack Technology Co., Ltd.の公式プロジェクトではありません。
+M5Stackおよび関連する製品名は、対応ハードウェアを説明する目的で使用しています。
+
 ## 主な機能
 
 - GPS車速を10 Hzで取得し、大きな整数表示でドライバーへ提示
@@ -206,6 +209,11 @@ CASIC設定の読戻し検証が成功していることと、ログ上で100 ms
 ## ライセンス
 
 このプロジェクトは [Apache License 2.0](LICENSE) で公開しています。
+
+M5Unified、M5GFX、ESP-IDFおよび内蔵フォントなど、利用している第三者著作物は
+それぞれのライセンスに従います。バージョン、著作権表示、利用箇所および
+ライセンス全文は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を
+参照してください。
 
 表示用フォント `main/speed_font.vlw` はRoboto Bold(Copyright Google 2014、
 Apache License 2.0)から生成しています。詳細は
