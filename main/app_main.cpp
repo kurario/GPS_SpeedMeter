@@ -73,6 +73,7 @@ constexpr uint8_t kGpsStaticHoldThresholdCmS = 50;
 constexpr uint32_t kStartupScreenDurationMs = 2000;
 constexpr TickType_t kUiPeriod = pdMS_TO_TICKS(50);
 constexpr uint32_t kCourseRegistrationMs = 10000;
+constexpr uint32_t kUiTaskStackBytes = 40960;
 
 QueueHandle_t g_gps_queue = nullptr;
 
@@ -1238,6 +1239,13 @@ void handle_buttons(UiRuntime &runtime, bool fresh) {
           runtime.registration_latitude_m2 = 0.0;
           runtime.registration_longitude_m2 = 0.0;
           runtime.registration_samples = 0;
+          ESP_LOGI(kTag,
+                   "Course registration started: sat=%u pDOP=%.2f "
+                   "stack_free=%u bytes",
+                   runtime.sample.satellites,
+                   static_cast<double>(runtime.sample.position_dop),
+                   static_cast<unsigned>(
+                       uxTaskGetStackHighWaterMark(nullptr)));
           set_notice(runtime, "10秒間その場で待ってください", now_ms);
         } else if (!runtime.registering_course) {
           set_notice(runtime, "停止してGPS安定後に実行", now_ms);
@@ -1530,6 +1538,13 @@ void ui_task(void *) {
             static_cast<double>(runtime.registration_samples);
         const double position_rms_m =
             std::sqrt(std::max(0.0, mean_square_degrees)) * 111320.0;
+        ESP_LOGI(kTag,
+                 "Course registration sampled: count=%u rms=%.2f m "
+                 "stack_free=%u bytes",
+                 static_cast<unsigned>(runtime.registration_samples),
+                 position_rms_m,
+                 static_cast<unsigned>(
+                     uxTaskGetStackHighWaterMark(nullptr)));
         if (position_rms_m > 10.0) {
           set_notice(runtime, "位置がばらつきました 再試行", now_ms, 3000);
           runtime.force_redraw = true;
@@ -1540,6 +1555,13 @@ void ui_task(void *) {
         const auto status = gpsmeter::append_course_to_sd(
             averaged, created_name, sizeof(created_name));
         runtime.course_storage.status = status;
+        ESP_LOGI(kTag,
+                 "Course registration storage result=%d name=%s "
+                 "stack_free=%u bytes",
+                 static_cast<int>(status),
+                 created_name[0] == '\0' ? "-" : created_name,
+                 static_cast<unsigned>(
+                     uxTaskGetStackHighWaterMark(nullptr)));
         if (status == gpsmeter::CourseStorageStatus::Ok) {
           runtime.settings.course_valid = true;
           runtime.settings.course_latitude = averaged.latitude;
@@ -1732,8 +1754,8 @@ extern "C" void app_main(void) {
     return;
   }
   created =
-      xTaskCreatePinnedToCore(ui_task, "ui_control", 24576, nullptr, 8,
-                              nullptr, 1);
+      xTaskCreatePinnedToCore(ui_task, "ui_control", kUiTaskStackBytes,
+                              nullptr, 8, nullptr, 1);
   if (created != pdPASS) {
     ESP_LOGE(kTag, "Failed to create UI task");
     return;
