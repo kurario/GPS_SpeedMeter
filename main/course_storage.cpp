@@ -19,11 +19,13 @@ namespace {
 
 constexpr const char *kTag = "course_storage";
 constexpr const char *kMountPoint = "/sdcard";
-constexpr const char *kDirectory = "/sdcard/gps_speed_meter";
-constexpr const char *kCourseFile = "/sdcard/gps_speed_meter/courses.txt";
+constexpr const char *kDirectory = "/sdcard/kuruma_race_assistant";
+constexpr const char *kCourseFile =
+    "/sdcard/kuruma_race_assistant/courses.txt";
 constexpr const char *kTemporaryFile =
-    "/sdcard/gps_speed_meter/courses.tmp";
-constexpr const char *kBackupFile = "/sdcard/gps_speed_meter/courses.bak";
+    "/sdcard/kuruma_race_assistant/courses.tmp";
+constexpr const char *kBackupFile =
+    "/sdcard/kuruma_race_assistant/courses.bak";
 constexpr size_t kMaximumFileSize = 8192;
 
 struct MountedCard {

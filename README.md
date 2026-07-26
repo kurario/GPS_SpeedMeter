@@ -175,7 +175,7 @@ ctest --test-dir build_host --output-on-failure
 
 ### microSDのコース設定
 
-microSDカードに`/gps_speed_meter/courses.txt`を作成します。文字コードはUTF-8、
+microSDカードに`/kuruma_race_assistant/courses.txt`を作成します。文字コードはUTF-8、
 ファイル形式は次のINI形式です。サンプルは
 [examples/courses.txt](examples/courses.txt) にあります。
 
