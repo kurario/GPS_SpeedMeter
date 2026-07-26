@@ -1,20 +1,11 @@
 #pragma once
 
+#include "gps_sample.hpp"
+
 #include <cstddef>
 #include <cstdint>
 
 namespace gpsmeter {
-
-struct GpsSample {
-  float speed_kmh = 0.0F;
-  uint64_t received_ms = 0;
-  uint8_t satellites = 0;
-  float hdop = 0.0F;
-  char rmc_status = '?';
-  char rmc_mode = '?';
-  bool valid = false;
-  bool speed_update = false;
-};
 
 class NmeaSentenceDetector {
 public:
@@ -39,7 +30,7 @@ private:
   char line_[kMaxSentenceLength]{};
   size_t length_ = 0;
   uint8_t satellites_ = 0;
-  float hdop_ = 0.0F;
+  float position_dop_ = 0.0F;
 };
 
 } // namespace gpsmeter

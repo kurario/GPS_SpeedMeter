@@ -33,7 +33,26 @@ struct LegacyAppSettingsV1 {
   bool auto_mode_enabled = true;
 };
 
-static_assert(sizeof(LegacyAppSettingsV1) == sizeof(AppSettings));
+struct LegacyAppSettingsV2 {
+  uint32_t schema_version = 2;
+  uint16_t pit_limit_kmh = 40;
+  uint16_t caution_speed_kmh = 35;
+  uint16_t warning_speed_kmh = 40;
+  uint16_t alert_clear_margin_kmh = 2;
+  uint16_t race_enter_speed_kmh = 60;
+  uint16_t race_enter_hold_s = 3;
+  uint16_t pit_return_speed_kmh = 40;
+  uint16_t pit_return_hold_s = 3;
+  uint16_t caution_tone_hz = 1200;
+  uint16_t warning_tone_hz = 3200;
+  uint8_t tone_volume = 192;
+  uint8_t display_brightness = 180;
+  bool pit_tone_enabled = true;
+  bool pit_blink_enabled = true;
+  bool auto_mode_enabled = true;
+};
+
+static_assert(sizeof(LegacyAppSettingsV1) == sizeof(LegacyAppSettingsV2));
 
 template <typename T>
 T clamp_value(T value, T minimum, T maximum) {
@@ -60,7 +79,23 @@ bool validate_settings(const AppSettings &settings) {
          settings.caution_tone_hz >= 400 &&
          settings.caution_tone_hz <= 6000 &&
          settings.warning_tone_hz >= 400 &&
-         settings.warning_tone_hz <= 6000;
+         settings.warning_tone_hz <= 6000 &&
+         (settings.race_format == RaceFormat::Timed ||
+          settings.race_format == RaceFormat::Laps) &&
+         settings.race_finish_hour <= 23 &&
+         settings.race_finish_minute <= 59 &&
+         settings.timezone_hours >= -12 && settings.timezone_hours <= 14 &&
+         settings.excluded_passes <= 5 && settings.target_laps >= 1 &&
+         settings.target_laps <= 9999 && settings.minimum_lap_s >= 10 &&
+         settings.minimum_lap_s <= 600 && settings.gate_radius_m >= 5 &&
+         settings.gate_radius_m <= 100 &&
+         settings.gate_exit_radius_m > settings.gate_radius_m &&
+         settings.gate_exit_radius_m <= 200 &&
+         (!settings.course_valid ||
+          (settings.course_name[0] != '\0' &&
+           settings.course_name.back() == '\0' &&
+           valid_geo_point(GeoPoint{settings.course_latitude,
+                                    settings.course_longitude})));
 }
 
 void normalize_settings(AppSettings &settings) {
@@ -89,6 +124,32 @@ void normalize_settings(AppSettings &settings) {
       clamp_value<uint16_t>(settings.caution_tone_hz, 400, 6000);
   settings.warning_tone_hz =
       clamp_value<uint16_t>(settings.warning_tone_hz, 400, 6000);
+  if (settings.race_format != RaceFormat::Timed &&
+      settings.race_format != RaceFormat::Laps) {
+    settings.race_format = RaceFormat::Timed;
+  }
+  settings.race_finish_hour =
+      clamp_value<uint8_t>(settings.race_finish_hour, 0, 23);
+  settings.race_finish_minute =
+      clamp_value<uint8_t>(settings.race_finish_minute, 0, 59);
+  settings.timezone_hours =
+      clamp_value<int8_t>(settings.timezone_hours, -12, 14);
+  settings.excluded_passes =
+      clamp_value<uint8_t>(settings.excluded_passes, 0, 5);
+  settings.target_laps =
+      clamp_value<uint16_t>(settings.target_laps, 1, 9999);
+  settings.minimum_lap_s =
+      clamp_value<uint16_t>(settings.minimum_lap_s, 10, 600);
+  settings.gate_radius_m =
+      clamp_value<uint16_t>(settings.gate_radius_m, 5, 100);
+  settings.gate_exit_radius_m =
+      clamp_value<uint16_t>(settings.gate_exit_radius_m,
+                            settings.gate_radius_m + 1, 200);
+  settings.course_name.back() = '\0';
+  if (!valid_geo_point(
+          GeoPoint{settings.course_latitude, settings.course_longitude})) {
+    settings.course_valid = false;
+  }
 }
 
 PolicySettings make_policy(const AppSettings &settings) {
@@ -111,6 +172,26 @@ PolicySettings make_policy(const AppSettings &settings) {
   };
 }
 
+RaceConfig make_race_config(const AppSettings &settings) {
+  return RaceConfig{
+      .format = settings.race_format,
+      .finish_hour = settings.race_finish_hour,
+      .finish_minute = settings.race_finish_minute,
+      .timezone_hours = settings.timezone_hours,
+      .target_laps = settings.target_laps,
+      .excluded_passes = settings.excluded_passes,
+      .gate_radius_m = static_cast<float>(settings.gate_radius_m),
+      .gate_exit_radius_m =
+          static_cast<float>(settings.gate_exit_radius_m),
+      .direction_tolerance_deg = 90.0F,
+      .minimum_lap_ms =
+          static_cast<uint32_t>(settings.minimum_lap_s) * 1000U,
+      .gate =
+          GeoPoint{settings.course_latitude, settings.course_longitude},
+      .gate_valid = settings.course_valid,
+  };
+}
+
 bool load_settings(AppSettings &settings) {
   nvs_handle_t handle = 0;
   esp_err_t err = nvs_open(kNamespace, NVS_READONLY, &handle);
@@ -121,11 +202,18 @@ bool load_settings(AppSettings &settings) {
     return false;
   }
 
-  std::array<uint8_t, sizeof(AppSettings)> bytes{};
-  size_t size = bytes.size();
-  err = nvs_get_blob(handle, kKey, bytes.data(), &size);
+  size_t size = 0;
+  err = nvs_get_blob(handle, kKey, nullptr, &size);
+  constexpr size_t kMaximumStoredSize =
+      sizeof(AppSettings) > sizeof(LegacyAppSettingsV2)
+          ? sizeof(AppSettings)
+          : sizeof(LegacyAppSettingsV2);
+  std::array<uint8_t, kMaximumStoredSize> bytes{};
+  if (err == ESP_OK && size <= bytes.size()) {
+    err = nvs_get_blob(handle, kKey, bytes.data(), &size);
+  }
   nvs_close(handle);
-  if (err != ESP_OK || size != bytes.size()) {
+  if (err != ESP_OK || size < sizeof(uint32_t) || size > bytes.size()) {
     ESP_LOGW(kTag, "Saved settings invalid; using defaults");
     settings = AppSettings{};
     return false;
@@ -133,14 +221,15 @@ bool load_settings(AppSettings &settings) {
 
   uint32_t schema_version = 0;
   std::memcpy(&schema_version, bytes.data(), sizeof(schema_version));
-  if (schema_version == AppSettings::kSchemaVersion) {
+  if (schema_version == AppSettings::kSchemaVersion &&
+      size == sizeof(AppSettings)) {
     AppSettings stored{};
     std::memcpy(&stored, bytes.data(), sizeof(stored));
     if (validate_settings(stored)) {
       settings = stored;
       return true;
     }
-  } else if (schema_version == 1) {
+  } else if (schema_version == 1 && size == sizeof(LegacyAppSettingsV1)) {
     LegacyAppSettingsV1 legacy{};
     std::memcpy(&legacy, bytes.data(), sizeof(legacy));
     const uint16_t legacy_pit_limit =
@@ -177,10 +266,31 @@ bool load_settings(AppSettings &settings) {
         .display_brightness = legacy.display_brightness,
         .pit_tone_enabled = legacy.pit_tone_enabled,
         .pit_blink_enabled = legacy.pit_blink_enabled,
-        .auto_mode_enabled = legacy.auto_mode_enabled,
     };
     normalize_settings(settings);
     ESP_LOGI(kTag, "Migrated settings schema v1 to v2");
+    (void)save_settings(settings);
+    return true;
+  } else if (schema_version == 2 && size == sizeof(LegacyAppSettingsV2)) {
+    LegacyAppSettingsV2 legacy{};
+    std::memcpy(&legacy, bytes.data(), sizeof(legacy));
+    settings = AppSettings{};
+    settings.pit_limit_kmh = legacy.pit_limit_kmh;
+    settings.caution_speed_kmh = legacy.caution_speed_kmh;
+    settings.warning_speed_kmh = legacy.warning_speed_kmh;
+    settings.alert_clear_margin_kmh = legacy.alert_clear_margin_kmh;
+    settings.race_enter_speed_kmh = legacy.race_enter_speed_kmh;
+    settings.race_enter_hold_s = legacy.race_enter_hold_s;
+    settings.pit_return_speed_kmh = legacy.pit_return_speed_kmh;
+    settings.pit_return_hold_s = legacy.pit_return_hold_s;
+    settings.caution_tone_hz = legacy.caution_tone_hz;
+    settings.warning_tone_hz = legacy.warning_tone_hz;
+    settings.tone_volume = legacy.tone_volume;
+    settings.display_brightness = legacy.display_brightness;
+    settings.pit_tone_enabled = legacy.pit_tone_enabled;
+    settings.pit_blink_enabled = legacy.pit_blink_enabled;
+    normalize_settings(settings);
+    ESP_LOGI(kTag, "Migrated settings schema v2 to v3");
     (void)save_settings(settings);
     return true;
   }

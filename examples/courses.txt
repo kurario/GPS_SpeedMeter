@@ -1,0 +1,11 @@
+# Kuruma Race Assistant course points
+# Google Maps等で確認したWGS84の緯度・経度を10進表記で入力します。
+# 周回ポイントは、ピット走路とレーシングコースが共通して通過する場所を選びます。
+
+[COURSE01]
+latitude=36.1234567
+longitude=140.1234567
+
+[COURSE02]
+latitude=35.9876543
+longitude=139.9876543

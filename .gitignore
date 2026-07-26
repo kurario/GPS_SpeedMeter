@@ -2,6 +2,7 @@
 /build/
 /build-host/
 /build_host/
+/tests/build/
 /managed_components/
 /sdkconfig
 /sdkconfig.old

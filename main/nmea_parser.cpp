@@ -72,6 +72,68 @@ bool parse_float(const char *text, float &value) {
   return true;
 }
 
+bool parse_coordinate(const char *value_text, const char *hemisphere_text,
+                      bool latitude, double &value) {
+  if (value_text == nullptr || hemisphere_text == nullptr ||
+      *value_text == '\0' || *hemisphere_text == '\0') {
+    return false;
+  }
+  errno = 0;
+  char *end = nullptr;
+  const double raw = std::strtod(value_text, &end);
+  if (errno != 0 || end == value_text || *end != '\0' ||
+      !std::isfinite(raw)) {
+    return false;
+  }
+  const double degrees = std::floor(raw / 100.0);
+  const double minutes = raw - degrees * 100.0;
+  if (minutes < 0.0 || minutes >= 60.0 ||
+      degrees > (latitude ? 90.0 : 180.0)) {
+    return false;
+  }
+  value = degrees + minutes / 60.0;
+  const char hemisphere = hemisphere_text[0];
+  if ((latitude && hemisphere == 'S') ||
+      (!latitude && hemisphere == 'W')) {
+    value = -value;
+  } else if ((latitude && hemisphere != 'N') ||
+             (!latitude && hemisphere != 'E')) {
+    return false;
+  }
+  return true;
+}
+
+bool parse_two_digits(const char *text, uint8_t &value) {
+  if (text == nullptr || text[0] < '0' || text[0] > '9' ||
+      text[1] < '0' || text[1] > '9') {
+    return false;
+  }
+  value = static_cast<uint8_t>((text[0] - '0') * 10 + text[1] - '0');
+  return true;
+}
+
+bool parse_utc(const char *time_text, const char *date_text,
+               UtcDateTime &utc) {
+  if (time_text == nullptr || date_text == nullptr ||
+      std::strlen(time_text) < 6 || std::strlen(date_text) != 6) {
+    return false;
+  }
+  uint8_t year = 0;
+  if (!parse_two_digits(time_text, utc.hour) ||
+      !parse_two_digits(time_text + 2, utc.minute) ||
+      !parse_two_digits(time_text + 4, utc.second) ||
+      !parse_two_digits(date_text, utc.day) ||
+      !parse_two_digits(date_text + 2, utc.month) ||
+      !parse_two_digits(date_text + 4, year)) {
+    return false;
+  }
+  utc.year = static_cast<uint16_t>(year >= 80 ? 1900 + year : 2000 + year);
+  utc.valid = utc.hour <= 23 && utc.minute <= 59 && utc.second <= 60 &&
+              utc.month >= 1 && utc.month <= 12 && utc.day >= 1 &&
+              utc.day <= 31;
+  return utc.valid;
+}
+
 bool sentence_type_is(const char *field, const char *suffix) {
   const size_t field_length = std::strlen(field);
   const size_t suffix_length = std::strlen(suffix);
@@ -129,12 +191,12 @@ bool NmeaParser::feed(char byte, uint64_t received_ms, GpsSample &sample) {
     if (produced) {
       if (!parsed.speed_update) {
         satellites_ = parsed.satellites;
-        hdop_ = parsed.hdop;
+        position_dop_ = parsed.position_dop;
         return false;
       }
       if (parsed.satellites == 0) {
         parsed.satellites = satellites_;
-        parsed.hdop = hdop_;
+        parsed.position_dop = position_dop_;
       }
       sample = parsed;
     }
@@ -168,17 +230,32 @@ bool NmeaParser::parse_sentence(const char *sentence, uint64_t received_ms,
   }
 
   if (sentence_type_is(fields[0], "RMC")) {
-    if (count <= 7) {
+    if (count <= 9) {
       return false;
     }
     float knots = 0.0F;
     const bool speed_ok = parse_float(fields[7], knots) && knots >= 0.0F;
+    float course = 0.0F;
+    const bool course_ok = parse_float(fields[8], course);
+    GeoPoint position{};
+    const bool position_ok =
+        parse_coordinate(fields[3], fields[4], true, position.latitude) &&
+        parse_coordinate(fields[5], fields[6], false, position.longitude);
+    UtcDateTime utc{};
+    const bool utc_ok = parse_utc(fields[1], fields[9], utc);
     sample.speed_kmh = speed_ok ? knots * kKnotsToKmh : 0.0F;
+    sample.course_degrees = course_ok ? course : 0.0F;
     sample.received_ms = received_ms;
+    sample.position = position;
+    sample.utc = utc;
     sample.rmc_status = fields[2][0] != '\0' ? fields[2][0] : '?';
     sample.rmc_mode =
         count > 12 && fields[12][0] != '\0' ? fields[12][0] : '?';
+    sample.position_valid = fields[2][0] == 'A' && position_ok;
     sample.valid = fields[2][0] == 'A' && speed_ok;
+    if (!utc_ok) {
+      sample.utc.valid = false;
+    }
     sample.speed_update = true;
     return true;
   }
@@ -194,7 +271,7 @@ bool NmeaParser::parse_sentence(const char *sentence, uint64_t received_ms,
     sample.received_ms = received_ms;
     sample.satellites = static_cast<uint8_t>(
         std::clamp(satellites, 0L, static_cast<long>(UINT8_MAX)));
-    sample.hdop = hdop;
+    sample.position_dop = hdop;
     sample.speed_update = false;
     if (fix_quality == 0) {
       sample.valid = false;

@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
-project(gps_speed_meter_tests LANGUAGES CXX)
+project(kuruma_race_assistant_tests LANGUAGES CXX)
 
 enable_testing()
 
-add_executable(gps_speed_meter_tests
+add_executable(kuruma_race_assistant_tests
     test_main.cpp
+    ../main/course_config.cpp
     ../main/nmea_parser.cpp
+    ../main/race_progress.cpp
+    ../main/ubx_parser.cpp
 )
-target_include_directories(gps_speed_meter_tests PRIVATE ../main)
-target_compile_features(gps_speed_meter_tests PRIVATE cxx_std_20)
-target_compile_options(gps_speed_meter_tests PRIVATE -Wall -Wextra -Werror)
+target_include_directories(kuruma_race_assistant_tests PRIVATE ../main)
+target_compile_features(kuruma_race_assistant_tests PRIVATE cxx_std_20)
+target_compile_options(kuruma_race_assistant_tests PRIVATE -Wall -Wextra -Werror)
 
-add_test(NAME gps_speed_meter_tests COMMAND gps_speed_meter_tests)
+add_test(NAME kuruma_race_assistant_tests COMMAND kuruma_race_assistant_tests)

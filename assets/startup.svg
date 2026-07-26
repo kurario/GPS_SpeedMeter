@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"
+     viewBox="0 0 320 240">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070b12"/>
+      <stop offset="0.62" stop-color="#05080d"/>
+      <stop offset="1" stop-color="#020407"/>
+    </linearGradient>
+    <radialGradient id="blue-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#2d85e6" stop-opacity="0.23"/>
+      <stop offset="0.48" stop-color="#2d85e6" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#2d85e6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent-line" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4ba2ff"/>
+      <stop offset="0.62" stop-color="#2478d4"/>
+      <stop offset="1" stop-color="#142239"/>
+    </linearGradient>
+    <linearGradient id="divider" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34445a"/>
+      <stop offset="0.7" stop-color="#151d29"/>
+      <stop offset="1" stop-color="#0b1018"/>
+    </linearGradient>
+    <clipPath id="screen">
+      <rect width="320" height="240"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#screen)">
+    <rect width="320" height="240" fill="url(#background)"/>
+    <circle cx="286" cy="54" r="116" fill="url(#blue-glow)"/>
+
+    <g fill="none" stroke-linecap="round">
+      <circle cx="302" cy="54" r="67" stroke="#1a2535" stroke-width="4"
+              stroke-dasharray="146 275" transform="rotate(140 302 54)"/>
+      <circle cx="302" cy="54" r="53" stroke="#2d85e6" stroke-width="4"
+              stroke-dasharray="112 221" transform="rotate(147 302 54)"/>
+      <circle cx="302" cy="54" r="39" stroke="#dcecff" stroke-width="3"
+              stroke-dasharray="62 183" transform="rotate(158 302 54)"/>
+      <circle cx="302" cy="54" r="79" stroke="#0c121b" stroke-width="1"/>
+    </g>
+    <rect x="14" y="23" width="2" height="167" rx="1"
+          fill="url(#accent-line)"/>
+    <circle cx="15" cy="24" r="2.5" fill="#eaf3ff"/>
+
+    <text x="28" y="34" fill="#8798ad"
+          font-family="Avenir Next, Helvetica Neue, Arial, sans-serif"
+          font-size="10" font-weight="600" letter-spacing="0.75">
+      M5Stack  /  MOTORSPORT
+    </text>
+
+    <text x="25" y="96" fill="#378fe8"
+          font-family="Avenir Next, Helvetica Neue, Arial, sans-serif"
+          font-size="52" font-weight="700" letter-spacing="-1.8">
+      KURUMA
+    </text>
+    <text x="25" y="137" fill="#f2f6fc"
+          font-family="Avenir Next, Helvetica Neue, Arial, sans-serif"
+          font-size="31" font-weight="700" letter-spacing="-1">
+      RACE ASSISTANT
+    </text>
+
+    <text x="27" y="170" fill="#8798ad"
+          font-family="Avenir Next, Helvetica Neue, Arial, sans-serif"
+          font-size="13" font-weight="400" letter-spacing="0.2">
+      by kurumario
+    </text>
+
+    <rect x="26" y="189" width="267" height="1" fill="url(#divider)"/>
+    <circle cx="26" cy="189.5" r="2" fill="#2d85e6"/>
+
+    <text x="26" y="216" fill="#68788d"
+          font-family="Avenir Next, Helvetica Neue, Arial, sans-serif"
+          font-size="8" font-weight="600" letter-spacing="1.15">
+      GNSS / INITIALIZING
+    </text>
+
+    <rect x="26" y="229" width="267" height="2" rx="1" fill="#192231"/>
+  </g>
+</svg>
